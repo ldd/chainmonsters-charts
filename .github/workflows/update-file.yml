@@ -20,6 +20,7 @@ jobs:
           # source .env.local
           npm run build:dev ./src/data/update.ts
           node -e 'require("./src/data/update").updateAll()'
+          rm ./src/data/*.js
           npm run build
       - name: Update resources
         uses: test-room-7/action-update-file@v1
