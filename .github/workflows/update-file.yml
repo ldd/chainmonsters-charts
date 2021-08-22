@@ -1,0 +1,29 @@
+name: Update File
+
+on:
+  push:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  resources:
+    name: Update resources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "14"
+          cache: "npm"
+      - name: fetch resources
+        run: |
+          npm install
+          # source .env.local
+          npm run build:dev ./src/data/update.ts
+          node -e 'require("./src/data/update").updateAll()'
+      - name: Update resources
+        uses: test-room-7/action-update-file@v1
+        with:
+          file-path: src/data/*_data.json
+          commit-msg: Update resources
+          github-token: ${{ secrets.GITHUB_TOKEN }}
