@@ -14,16 +14,24 @@ jobs:
       - uses: actions/setup-node@v1
         with:
           node-version: "14"
-          cache: "npm"
       - name: fetch resources
         run: |
           npm install
           # source .env.local
           npm run build:dev ./src/data/update.ts
           node -e 'require("./src/data/update").updateAll()'
+          npm run build
       - name: Update resources
         uses: test-room-7/action-update-file@v1
         with:
           file-path: src/data/*_data.json
           commit-msg: Update resources
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      # Deploy to Netlify using our production secrets
+      - name: Deploy to netlify
+        uses: netlify/actions/cli@master
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        with:
+          args: deploy --dir=build --prod
