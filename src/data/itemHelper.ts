@@ -15,6 +15,7 @@ type Event<T extends object> = {
   transactionId: string;
   data: T;
   blockTimestamp: string;
+  type: string;
 };
 
 type DepositEvent = Event<{ saleItemID: number; saleItemCollection: string }>;
@@ -141,6 +142,62 @@ export const getLatestOffers = async (limit = 5, otherRewards?: RewardDic) => {
     17_000_000,
     limit
   );
+  return data;
+};
+
+const REWARDS = "A.93615d25d14fa337.ChainmonstersRewards";
+
+type RewardWithdrawEvent = Event<{
+  id: number;
+  from: string | null;
+  to: string | null;
+}>;
+type RewardDepositEvent = RewardWithdrawEvent;
+
+export const getLatestTrades = async (limit = 10, otherRewards?: RewardDic) => {
+  const depositEvent = `${REWARDS}.Withdraw`;
+  const priceEvent = `${REWARDS}.Deposit`;
+  const parser = (
+    responses: [RewardWithdrawEvent[], RewardDepositEvent[]],
+    rewardDic?: RewardDic
+  ): EventData[] => {
+    const dic: Record<string, EventData> = {};
+    responses.flat().forEach(event => {
+      const { transactionId, data, blockTimestamp: time } = event;
+      const { id: saleItemId, from, to } = data;
+      if (!from && !to) return;
+
+      const eventData = dic[transactionId];
+      if (eventData) {
+        eventData.from ??= from;
+        eventData.to ??= to;
+        return;
+      }
+
+      const [rawItemLabel, serialNumber] =
+        itemData.rewards[saleItemId] ?? rewardDic?.[saleItemId] ?? [];
+      type RewardLabel = keyof typeof rewardData;
+      const itemLabel = rewardData[rawItemLabel as RewardLabel];
+
+      // prettier-ignore
+      dic[transactionId] = { from, to, saleItemId, transactionId, itemLabel, serialNumber,  time }
+    });
+    return Object.values(dic);
+  };
+
+  const { data } = await getMarketplaceEvents(
+    [depositEvent, priceEvent],
+    otherRewards,
+    parser,
+    // 18_568_845,
+    18_552_850,
+    limit
+  );
+  const FILE_NAME = "./src/data/trade_data.json";
+  const storage: { trades: Record<string, EventData> } = { trades: {} };
+  data.forEach(e => (storage.trades[e.transactionId] = e));
+  if (writeFileSync) writeFileSync(FILE_NAME, JSON.stringify(storage));
+
   return data;
 };
 
